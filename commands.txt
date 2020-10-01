@@ -1,0 +1,58 @@
+--------------- LOCALSTACK
+
+# Run localstack
+TMPDIR=/private$TMPDIR docker-compose up
+
+# Create table
+aws --endpoint-url=http://localhost:4566 dynamodb create-table --attribute-definitions AttributeName=Artist,AttributeType=S --table-name Artists --key-schema AttributeName=Artist,KeyType=HASH --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+
+# Add item to table
+aws --endpoint-url=http://localhost:4566 dynamodb put-item --table-name Artists --item '{"Artist": {"S": "Nikolai"}, {"Title": {"S": "Gamlet"}}}'
+
+# Get item
+aws --endpoint-url=http://localhost:4566 dynamodb get-item --table-name Artists --key '{"Artist": {"S": "Nikolai"}}'
+
+# Update item
+aws --endpoint-url=http://localhost:4566 dynamodb update-item --table-name Artists --key '{"Artist": {"S": "Nikolai"}}' --attribute-updates '{"Title":{"Value": {"S": "Gamlet 2"}, "Action": "PUT"}}'
+
+--------------- STREAMS
+
+# Enable stream
+aws --endpoint-url=http://localhost:4566 dynamodb update-table --table-name Artists --stream-specification '{"StreamEnabled":true,"StreamViewType":"NEW_AND_OLD_IMAGES"}'
+
+# Describe stream
+aws --endpoint-url=http://localhost:4566 dynamodbstreams describe-stream --stream-arn arn:aws:dynamodb:us-east-1:000000000000:table/Artists/stream/2020-10-01T11:46:38.965
+
+# Get stream shard-iterator
+aws --endpoint-url=http://localhost:4566 dynamodbstreams get-shard-iterator --shard-id shardId-00000001601500000000-000000000000 --shard-iterator-type TRIM_HORIZON --stream-arn arn:aws:dynamodb:us-east-1:000000000000:table/Artists/stream/2020-10-01T11:46:38.965
+
+# Get records
+aws --endpoint-url=http://localhost:4566 dynamodbstreams get-records --shard-iterator <>
+
+--------------- LAMBDA
+
+# ZIP lambda
+zip lambda.zip index.js
+
+# Create lambda
+aws --endpoint-url=http://localhost:4566 lambda create-function --function-name LogArtistChange --zip-file fileb://lambda.zip --handler index.handler --runtime nodejs12.x --role arn:aws:iam::123456789012:role/lambda-dynamodb-role
+
+# Update lambda
+aws --endpoint-url=http://localhost:4566 lambda update-function-code --function-name LogArtistChange --zip-file fileb://lambda.zip
+
+# Test lambda
+aws --endpoint-url=http://localhost:4566 lambda invoke --function-name LogArtistChange --cli-binary-format raw-in-base64-out --payload file://test-input.json test-output.txt
+
+# Attach to stream
+aws --endpoint-url=http://localhost:4566 lambda create-event-source-mapping --function-name LogArtistChange --batch-size 100 --starting-position LATEST --event-source arn:aws:dynamodb:us-east-1:000000000000:table/Artists/stream/2020-10-01T11:46:38.965
+
+--------------- LOGS
+
+# Get lambda log groups
+aws --endpoint-url=http://localhost:4566 logs describe-log-groups --query logGroups[*].logGroupName
+
+# Get log group items
+aws --endpoint-url=http://localhost:4566 logs describe-log-streams --log-group-name '/aws/lambda/LogArtistChange' --query logStreams[*].logStreamName
+
+# Get logs
+aws --endpoint-url=http://localhost:4566 logs get-log-events --log-group-name '/aws/lambda/LogArtistChange' --log-stream-name <>

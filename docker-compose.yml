@@ -10,9 +10,12 @@ services:
       - "4571:4571"
       - "${PORT_WEB_UI-8080}:${PORT_WEB_UI-8080}"
     environment:
-      - SERVICES=${SERVICES- }
-      - DEBUG=${DEBUG- }
-      - DATA_DIR=${DATA_DIR- }
+      # - SERVICES=${SERVICES- }
+      - SERVICES=lambda,dynamodb,dynamodbstreams,iam
+      # - DEBUG=${DEBUG- }
+      - DEBUG=1
+      # - DATA_DIR=${DATA_DIR- }
+      - DATA_DIR=/tmp/localstack/data
       - PORT_WEB_UI=${PORT_WEB_UI- }
       - LAMBDA_EXECUTOR=${LAMBDA_EXECUTOR- }
       - KINESIS_ERROR_PROBABILITY=${KINESIS_ERROR_PROBABILITY- }
